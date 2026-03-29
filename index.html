@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>PocilgAPP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  font-family: Arial;
+  margin:0;
+  padding:16px;
+  background:#f5f5f5;
+}
+
+body.dark-mode {
+  background:#1f2937;
+  color:white;
+}
+
+/* LOGO */
+h1 {
+  margin:0 0 10px 0;
+  font-weight:900;
+}
+h1 span {
+  color:#22c55e;
+}
+
+/* TARJETAS */
+.card {
+  background:white;
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:12px;
+  transition:0.2s;
+}
+
+body.dark-mode .card {
+  background:#374151;
+}
+
+/* TITULO */
+.task-title {
+  font-size:18px;
+  font-weight:800;
+  margin-bottom:8px;
+}
+
+/* TEXTO */
+.meta-label {
+  font-weight:700;
+}
+
+.meta-value {
+  color:#4b5563;
+}
+
+body.dark-mode .meta-value {
+  color:#d1d5db;
+}
+
+.meta-row {
+  display:flex;
+  gap:6px;
+  margin-top:4px;
+}
+
+.meta-icon {
+  width:16px;
+}
+
+/* BARRA */
+.bar {
+  height:10px;
+  background:#eee;
+  border-radius:6px;
+  overflow:hidden;
+  margin-top:6px;
+}
+
+.fill {
+  height:100%;
+}
+
+/* BOTON */
+button {
+  margin-top:8px;
+  padding:6px 10px;
+  border:none;
+  border-radius:8px;
+  background:#22c55e;
+  color:white;
+  font-size:16px;
+}
+
+/* 💩 ANIMACIÓN */
+.poop-shake-once {
+  display:inline-block;
+  animation:shake 0.4s 5;
+}
+
+@keyframes shake {
+  0%{transform:translateX(0);}
+  25%{transform:translateX(-1px);}
+  50%{transform:translateX(1px);}
+  75%{transform:translateX(-1px);}
+  100%{transform:translateX(0);}
+}
+
+/* BANNER */
+.critical-banner {
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:10px;
+  background:#fff1f2;
+  color:#991b1b;
+}
+
+.good {
+  background:#ecfdf5;
+  color:#065f46;
+}
+
+/* MODO OSCURO BOTÓN */
+.theme-toggle {
+  position:fixed;
+  top:10px;
+  right:10px;
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  font-size:14px;
+  border:1px solid #ccc;
+  background:white;
+}
+</style>
+</head>
+
+<body>
+
+<button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+
+<h1>POCILG<span>APP</span></h1>
+
+<div id="critical"></div>
+<div id="tasks"></div>
+
+<script>
+let tasks = JSON.parse(localStorage.getItem("tasks")||"[
+{name:'Arenero gato',days:15},
+{name:'Lavabo',days:21},
+{name:'Sábanas',days:30},
+{name:'Ducha',days:60},
+{name:'Muebles',days:30},
+{name:'Suelo',days:30},
+{name:'Aspirar',days:2}
+]");
+
+function save(){
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+}
+
+function percent(t){
+  if(!t.last) return 0;
+  let d=(Date.now()-t.last)/(1000*60*60*24);
+  return Math.max(0,100-(d/t.days*100));
+}
+
+function emoji(p){
+  if(p>=60) return "👌";
+  if(p>=25) return "😐";
+  if(p>=5) return "😢";
+  return '<span class="poop-shake-once">💩</span>';
+}
+
+function render(){
+  let html="";
+  let critical=0;
+
+  tasks.forEach((t,i)=>{
+    let p=percent(t);
+    if(p<5) critical++;
+
+    html+=`
+    <div class="card" id="task-${i}">
+      <div class="task-title">${t.name}</div>
+
+      <div class="meta-row">
+        <span class="meta-icon">📅</span>
+        <span class="meta-label">Última limpieza:</span>
+        <span class="meta-value">${t.last?new Date(t.last).toLocaleDateString():"-"}</span>
+      </div>
+
+      <div class="meta-row">
+        <span class="meta-icon">⏳</span>
+        <span class="meta-label">Frecuencia:</span>
+        <span class="meta-value">${t.days} días</span>
+      </div>
+
+      <div style="margin-top:8px;">
+        <span class="meta-icon">✨</span> 
+        <span class="meta-label">Estado actual:</span>
+        <span class="meta-value">${emoji(p)} ${Math.round(p)}% limpio</span>
+      </div>
+
+      <div class="bar">
+        <div class="fill" style="width:${p}%; background:${p>60?'green':p>25?'orange':'red'}"></div>
+      </div>
+
+      <button onclick="clean(${i})">🧽</button>
+    </div>
+    `;
+  });
+
+  document.getElementById("tasks").innerHTML=html;
+
+  document.getElementById("critical").innerHTML=
+    critical>0
+    ? `<div class="critical-banner" onclick="goCritical()">⚠️ ${critical} tareas críticas</div>`
+    : `<div class="critical-banner good">✔️ Todo en orden</div>`;
+}
+
+function clean(i){
+  tasks[i].last=Date.now();
+  save();
+  render();
+}
+
+function goCritical(){
+  let cards=document.querySelectorAll(".card");
+  for(let c of cards){
+    if(c.innerHTML.includes("💩")){
+      c.scrollIntoView({behavior:"smooth", block:"center"});
+      c.style.boxShadow="0 0 0 2px red";
+      setTimeout(()=>c.style.boxShadow="",1000);
+      break;
+    }
+  }
+}
+
+function toggleTheme(){
+  document.body.classList.toggle("dark-mode");
+}
+
+render();
+</script>
+
+</body>
+</html>
